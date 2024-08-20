@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Application</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .chat-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+
+        .messages {
+            height: 300px;
+            overflow-y: scroll;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .message {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+            background-color: #e0e0e0;
+        }
+
+        .message.you {
+            background-color: #d1ffd1;
+            text-align: right;
+        }
+
+        .message-form {
+            display: flex;
+        }
+
+        .message-form input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        .message-form button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .message-form button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <h2>Chat Application</h2>
+    <div class="messages" id="messages"></div>
+
+    <form class="message-form" id="messageForm">
+        <input type="text" id="messageInput" placeholder="Type a message..." required>
+        <!-- 보내는 사람, 받는 사람 설정-->
+        <input type="hidden" id="sender" value="User1">
+        <input type="hidden" id="receiver" value="User2">
+        <button type="submit">Send</button>
+    </form>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+
+<script>
+    // WebSocket 연결 설정
+    const socket = new SockJS('/ws');
+    const stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, function (frame) {
+        console.log('Connected: ' + frame);
+
+        // 채팅 메시지 구독
+        stompClient.subscribe('/topic/chat', function (messageOutput) {
+            const messageContent = JSON.parse(messageOutput.body).content;
+            displayMessage(messageContent, 'them');
+        });
+    });
+
+    // 메시지 보내기
+    document.getElementById('messageForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+        const sender = document.getElementById('sender').value;
+        const receiver = document.getElementById('receiver').value;
+
+        if (message) {
+            // 메시지를 서버로 전송
+            stompClient.send("/app/sendMessage", {}, JSON.stringify({
+                sender: sender,
+                receiver: receiver,
+                content: message
+            }));
+
+            // 내 메시지를 화면에 표시
+            displayMessage(message, 'you');
+            messageInput.value = '';
+        }
+    });
+
+    // 메시지 표시 함수
+    function displayMessage(message, type) {
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message ' + type;
+        messageContainer.textContent = message;
+
+        const messages = document.getElementById('messages');
+        messages.appendChild(messageContainer);
+        messages.scrollTop = messages.scrollHeight; // 스크롤 자동 내리기
+    }
+</script>
+
+
+</body>
+</html>
